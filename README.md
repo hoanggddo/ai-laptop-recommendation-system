@@ -2,6 +2,7 @@
 
 An intelligent system that helps users discover laptops tailored to their preferences using a hybrid of **content filtering** and **AI-powered recommendations**. Built with **Streamlit**, **PyTorch**, and **Pandas**, it provides an interactive interface for laptop selection and similarity-based suggestions.
 
+Check it our on your local machine or go to https://ailaptop.streamlit.app/ 
 ---
 
 ## 🚀 Overview
