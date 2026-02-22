@@ -1,4 +1,4 @@
-# streamlit_app_with_charts.py
+# streamlit_app_with_score.py
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -47,7 +47,7 @@ num_users = model_info["num_users"]
 num_items = model_info["num_items"]
 embedding_dim = model_info["embedding_dim"]
 
-# --- Define model ---
+# --- Model ---
 class HybridLaptopRecommender(nn.Module):
     def __init__(self, num_users, num_items, num_features, embedding_dim=30):
         super().__init__()
@@ -66,7 +66,7 @@ model = HybridLaptopRecommender(num_users, num_items, len(feature_cols), embeddi
 model.load_state_dict(torch.load("hybrid_laptop_model.pth", map_location="cpu"))
 model.eval()
 
-# --- Recommendation function ---
+# --- Recommendation ---
 def recommend_laptops(target_name=None, top_n=5, custom_features=None):
     all_features = torch.tensor(data[feature_cols].iloc[:num_items].values.astype(float), dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
@@ -83,10 +83,10 @@ def recommend_laptops(target_name=None, top_n=5, custom_features=None):
         return pd.DataFrame()
     
     similarities = F.cosine_similarity(target_embed.unsqueeze(0), all_item_embeds + 0.5*all_feature_embeds)
-    top_candidates = torch.topk(similarities, top_n).indices.tolist()
+    top_candidates = torch.topk(similarities, top_n*3).indices.tolist()
     return data.iloc[top_candidates]
 
-# --- Colored bars ---
+# --- Spec bar colors ---
 def get_bar_color(value, desired):
     ratio = value / max(desired,1)
     if ratio >= 1.0:
@@ -96,8 +96,19 @@ def get_bar_color(value, desired):
     else:
         return "red"
 
-# --- Display laptops ---
-def display_laptops(laptops, desired_specs=None):
+# --- Overall Score ---
+def compute_score(row, desired_specs, budget_usd):
+    spec_score = 0
+    for k in ['ram', 'storage', 'display(in inch)']:
+        spec_score += min(row[k]/max(desired_specs[k],1),1)
+    spec_score /= 3
+    rating_score = row['rating']/5
+    budget_score = 1 - abs(row['price_usd'] - budget_usd)/max(budget_usd,1)
+    total_score = 0.5*spec_score + 0.3*rating_score + 0.2*budget_score
+    return total_score
+
+# --- Display ---
+def display_laptops(laptops, desired_specs=None, budget_usd=None):
     for i, row in laptops.iterrows():
         st.markdown(f"### {row['name']}")
         if 'img_link' in row:
@@ -105,95 +116,77 @@ def display_laptops(laptops, desired_specs=None):
         st.write(f"💰 Price: ${row['price_usd']:.2f}")
         st.write(f"⭐ Rating: {row['rating']}/5")
 
-        # Colored spec bars
+        # Overall Score
+        score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
+        st.progress(score)
+
+        # Spec chart
         ram_color = get_bar_color(row['ram'], desired_specs['ram']) if desired_specs else "green"
         storage_color = get_bar_color(row['storage'], desired_specs['storage']) if desired_specs else "green"
         display_color = get_bar_color(row['display(in inch)'], desired_specs['display']) if desired_specs else "green"
 
-        # Plotly spec comparison chart
         fig = go.Figure()
-        specs = ['RAM (GB)', 'Storage (GB)', 'Display (inch)']
-        values = [row['ram'], row['storage'], row['display(in inch)']]
-        colors = [ram_color, storage_color, display_color]
-        desired_values = [desired_specs['ram'], desired_specs['storage'], desired_specs['display']] if desired_specs else values
+        specs = ['RAM (GB)','Storage (GB)','Display (inch)']
+        values = [row['ram'],row['storage'],row['display(in inch)']]
+        colors = [ram_color,storage_color,display_color]
+        desired_values = [desired_specs['ram'],desired_specs['storage'],desired_specs['display']] if desired_specs else values
 
-        fig.add_trace(go.Bar(
-            x=specs,
-            y=values,
-            name='Laptop Specs',
-            marker_color=colors,
-            text=values,
-            textposition='auto'
-        ))
-        fig.add_trace(go.Scatter(
-            x=specs,
-            y=desired_values,
-            mode='lines+markers',
-            name='Desired Specs',
-            marker=dict(color='blue', size=12),
-            line=dict(color='blue', width=2, dash='dash')
-        ))
+        fig.add_trace(go.Bar(x=specs, y=values, marker_color=colors, text=values, textposition='auto', name='Laptop Specs'))
+        fig.add_trace(go.Scatter(x=specs, y=desired_values, mode='lines+markers', line=dict(color='blue',width=2,dash='dash'), name='Desired Specs'))
         fig.update_layout(yaxis=dict(title='Value'), showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
         st.write("---")
 
-# --- Beginner / Advanced UI ---
-mode = st.radio("Choose mode:", ["Beginner", "Advanced"])
+# --- UI ---
+mode = st.radio("Choose mode:", ["Beginner","Advanced"])
 
-if mode == "Beginner":
+if mode=="Beginner":
     st.subheader("I don’t know much about computers")
-    usage = st.multiselect("What will you mainly use your laptop for?",
-                           ["Web browsing / Office", "Gaming", "Video Editing", "Programming"])
-    
+    usage = st.multiselect("What will you mainly use your laptop for?", ["Web browsing / Office", "Gaming", "Video Editing", "Programming"])
     spec_map = {
-        "Web browsing / Office": {"ram": 8, "storage": 256, "display": 13},
-        "Gaming": {"ram": 16, "storage": 512, "display": 15},
-        "Video Editing": {"ram": 32, "storage": 1024, "display": 17},
-        "Programming": {"ram": 16, "storage": 512, "display": 15}
+        "Web browsing / Office":{"ram":8,"storage":256,"display":13},
+        "Gaming":{"ram":16,"storage":512,"display":15},
+        "Video Editing":{"ram":32,"storage":1024,"display":17},
+        "Programming":{"ram":16,"storage":512,"display":15}
     }
     ram = max([spec_map[u]["ram"] for u in usage]) if usage else 8
     storage = max([spec_map[u]["storage"] for u in usage]) if usage else 256
     display_val = max([spec_map[u]["display"] for u in usage]) if usage else 13
-
-    st.write(f"Recommended specs: RAM: {ram}GB, Storage: {storage}GB, Display: {display_val}\"")
+    st.write(f"Recommended specs: RAM:{ram}GB, Storage:{storage}GB, Display:{display_val}\"")
+    budget_usd = st.number_input("Approx Budget ($USD)", 200, 5000, 800)
 
     custom_features = []
     for col in feature_cols:
-        if "ram" in col.lower():
-            custom_features.append(ram)
-        elif "storage" in col.lower():
-            custom_features.append(storage)
-        elif "display" in col.lower():
-            custom_features.append(display_val)
-        else:
-            custom_features.append(data[col].mean())
+        if "ram" in col.lower(): custom_features.append(ram)
+        elif "storage" in col.lower(): custom_features.append(storage)
+        elif "display" in col.lower(): custom_features.append(display_val)
+        else: custom_features.append(data[col].mean())
     
     if st.button("Recommend Laptops"):
         recs = recommend_laptops(custom_features=custom_features, top_n=5)
+        recs['score'] = recs.apply(lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
+        recs = recs.sort_values(by='score', ascending=False)
         st.subheader("Top Laptop Recommendations")
-        display_laptops(recs, desired_specs={"ram":ram,"storage":storage,"display":display_val})
+        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
 
-elif mode == "Advanced":
+elif mode=="Advanced":
     st.subheader("I know what I want")
-    ram = st.slider("RAM (GB)", 4, 64, 16)
-    storage = st.slider("Storage (GB)", 128, 2048, 512)
-    display_val = st.slider("Display (inch)", 11, 17, 15)
-    budget = st.slider("Budget (normalized)", 0.0, 1.0, 0.5)
-    
+    ram = st.slider("RAM (GB)",4,64,16)
+    storage = st.slider("Storage (GB)",128,2048,512)
+    display_val = st.slider("Display (inch)",11,17,15)
+    budget_usd = st.number_input("Approx Budget ($USD)",200,5000,1000)
+
     custom_features = []
     for col in feature_cols:
-        if "ram" in col.lower():
-            custom_features.append(ram)
-        elif "storage" in col.lower():
-            custom_features.append(storage)
-        elif "display" in col.lower():
-            custom_features.append(display_val)
-        elif "price" in col.lower():
-            custom_features.append(budget)
-        else:
-            custom_features.append(data[col].mean())
+        if "ram" in col.lower(): custom_features.append(ram)
+        elif "storage" in col.lower(): custom_features.append(storage)
+        elif "display" in col.lower(): custom_features.append(display_val)
+        elif "price" in col.lower(): custom_features.append(budget_usd)
+        else: custom_features.append(data[col].mean())
     
     if st.button("Recommend Laptops"):
         recs = recommend_laptops(custom_features=custom_features, top_n=5)
+        recs['score'] = recs.apply(lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
+        recs = recs.sort_values(by='score', ascending=False)
         st.subheader("Top Laptop Recommendations")
-        display_laptops(recs, desired_specs={"ram":ram,"storage":storage,"display":display_val})
+        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
