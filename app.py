@@ -6,22 +6,33 @@ import torch.nn.functional as F
 import pandas as pd
 import numpy as np
 import pickle
+import re
+
+st.set_page_config(page_title="💻 Hybrid Laptop Recommender", layout="wide")
 
 # --- 1. Load Data ---
-data = pd.read_csv("laptops.csv", encoding="ISO-8859-1")
-data.dropna(inplace=True)
+@st.cache_data
+def load_data(csv_path="laptops.csv"):
+    data = pd.read_csv(csv_path, encoding="ISO-8859-1")
+    data.dropna(inplace=True)
+    
+    # Strip whitespace from columns
+    data.columns = data.columns.str.strip()
+    
+    # Extract numeric from RAM and Storage
+    def extract_numeric(value):
+        numbers = re.findall(r'\d+', str(value))
+        return int(numbers[0]) if numbers else 0
 
-# Extract numeric from RAM and Storage
-import re
-def extract_numeric(value):
-    numbers = re.findall(r'\d+', str(value))
-    return int(numbers[0]) if numbers else 0
+    data['ram'] = data['ram'].apply(extract_numeric)
+    data['storage'] = data['storage'].apply(extract_numeric)
+    data['display(in inch)'] = pd.to_numeric(data['display(in inch)'], errors='coerce')
+    
+    return data
 
-data['ram'] = data['ram'].apply(extract_numeric)
-data['storage'] = data['storage'].apply(extract_numeric)
-data['display(in inch)'] = pd.to_numeric(data['display(in inch)'], errors='coerce')
+data = load_data()
 
-# --- Load model info ---
+# --- 2. Load model info ---
 with open("model_info.pkl", "rb") as f:
     model_info = pickle.load(f)
 
@@ -30,7 +41,14 @@ num_users = model_info["num_users"]
 num_items = model_info["num_items"]
 embedding_dim = model_info["embedding_dim"]
 
-# --- Define model ---
+# Ensure feature columns exist
+feature_cols = [col for col in feature_cols if col in data.columns]
+
+if len(feature_cols) == 0:
+    st.error("None of the feature columns exist in the CSV! Check column names.")
+    st.stop()
+
+# --- 3. Define model ---
 class HybridLaptopRecommender(nn.Module):
     def __init__(self, num_users, num_items, num_features, embedding_dim=30):
         super().__init__()
@@ -46,19 +64,22 @@ class HybridLaptopRecommender(nn.Module):
         interaction = user_embeds * (item_embeds + feature_embeds)
         return self.fc(interaction).squeeze()
 
-# --- Load trained model ---
+# --- 4. Load trained model ---
 model = HybridLaptopRecommender(num_users, num_items, len(feature_cols), embedding_dim)
 model.load_state_dict(torch.load("hybrid_laptop_model.pth", map_location="cpu"))
 model.eval()
 
-# --- Recommendation function ---
+# --- 5. Recommendation function ---
 def recommend_laptops(target_name, top_n=5):
     if target_name not in data['name'].values:
         return pd.DataFrame(columns=['name','price(in Rs.)','ram','storage','display(in inch)','rating'])
     
     target_row = data[data['name'] == target_name].iloc[0]
     target_idx = target_row.name
-    target_feature = torch.tensor(target_row[feature_cols].values.astype(float), dtype=torch.float)
+
+    # Ensure features exist
+    features_values = target_row[feature_cols].astype(float).values
+    target_feature = torch.tensor(features_values, dtype=torch.float)
     
     all_features = torch.tensor(data[feature_cols].values.astype(float), dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
@@ -71,7 +92,7 @@ def recommend_laptops(target_name, top_n=5):
 
     return data.iloc[top_candidates][['name','price(in Rs.)','ram','storage','display(in inch)','rating']]
 
-# --- Streamlit UI ---
+# --- 6. Streamlit UI ---
 st.title("💻 Hybrid Laptop Recommender")
 
 laptop_list = data['name'].unique().tolist()
