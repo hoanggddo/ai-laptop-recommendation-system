@@ -91,42 +91,47 @@ data[['price_norm','ram_norm','storage_norm','display_norm']] = scaler.fit_trans
 
 data['user_id'] = range(len(data))
 data['laptop_id'] = range(len(data))
+```
 
-## Setup
-Step 1: Set Up Your Project Folder
+## Data Preprocessing
+Step 1: Project Folder
+
 Create a folder for your project:
-
-bash
 
 mkdir laptop-recommender
 cd laptop-recommender
-Place your files in this folder:
-app.py
-laptops.csv
-hybrid_laptop_model.pth
-model_info.pkl
+
+
+Place the following files in the folder:
+
+app.py (your Streamlit app)
+
+laptops.csv (dataset)
+
+hybrid_laptop_model.pth (saved AI model)
+
+model_info.pkl (metadata for the model)
+
 requirements.txt
 
-Ensure your laptop dataset (e.g., laptops.csv) is in the same folder
+Step 2: Python Environment
 
-Step 2: Set Up Your Python Environment
-You need Python 3.8 or higher installed. If not installed, download from: https://www.python.org/downloads
+Make sure Python 3.8 or higher is installed. Then create a virtual environment:
 
-Then, create and activate a virtual environment:
-
-For Windows:
-bash
+Windows:
 
 python -m venv venv
 venv\Scripts\activate
-For macOS/Linux:
-bash
+
+
+macOS/Linux:
 
 python3 -m venv venv
 source venv/bin/activate
-Step 3: Install Required Python Packages
 
-Create a requirements.txt with:
+Step 3: Install Dependencies
+
+Create a requirements.txt file with the following:
 
 streamlit==1.31.0
 torch==2.1.0
@@ -134,16 +139,16 @@ pandas==2.1.1
 numpy==1.26.2
 scikit-learn==1.3.0
 
-Install all dependencies using pip:
 
-bash
+Install dependencies:
 
+pip install -r requirements.txt
 
-pip install streamlit pandas torch scikit-learn numpy
-Step 4: Run the App
-Start your Streamlit application with:
+Step 4: Run the Streamlit App
 
-bash
+Start the app:
 
 streamlit run app.py
-This will open a new tab in your web browser at http://localhost:8501/
+
+
+Open a browser to http://localhost:8501/ to use the laptop finder.
