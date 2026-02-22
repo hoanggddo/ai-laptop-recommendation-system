@@ -1,9 +1,32 @@
-# --- Streamlit UI ---
+import streamlit as st
+import pandas as pd
+
+# ---------------- LOAD DATA ----------------
+# Make sure your dataset file is in the same folder
+data = pd.read_csv("laptops.csv")
+
+# ---------------- CLEANING ----------------
+
+# Convert price to USD if needed (example conversion)
+def usd_to_rs(usd):
+    return usd * 83  # Adjust if needed
+
+# If your dataset already has USD, skip this conversion
+if "price_usd" not in data.columns:
+    data["price_usd"] = data["price(in Rs.)"] / 83
+
+# Ensure numeric columns
+data["raw_ram"] = pd.to_numeric(data["raw_ram"], errors="coerce")
+data["raw_storage"] = pd.to_numeric(data["raw_storage"], errors="coerce")
+data["raw_display"] = pd.to_numeric(data["raw_display"], errors="coerce")
+data["rating"] = pd.to_numeric(data["rating"], errors="coerce")
+
+# ---------------- STREAMLIT UI ----------------
 
 st.title("College Laptop Finder")
 
 st.markdown("""
-Find the right laptop based on your needs and budget.
+Find the right laptop based on your needs and budget.  
 This tool guides beginners while still giving full control to advanced users.
 """)
 
@@ -37,8 +60,6 @@ if user_type in ["High School Senior (Going to College)",
 
     if usage_type == "General College Work (Notes, Docs, Browsing)":
         min_ram, min_storage = 8, 256
-    elif usage_type == "STEM / Engineering / Programming":
-        min_ram, min_storage = 16, 512
     else:
         min_ram, min_storage = 16, 512
 
@@ -63,13 +84,13 @@ else:
     min_ram = st.slider(
         "Minimum RAM (GB)",
         2, 64, 8,
-        help="RAM affects multitasking. 8GB is standard for school. 16GB+ is better for engineering, coding, or gaming."
+        help="RAM affects multitasking. 8GB is standard. 16GB+ is better for engineering, coding, or gaming."
     )
 
     min_storage = st.slider(
         "Minimum Storage (GB)",
         64, 2048, 256,
-        help="Storage determines how many files/programs you can keep. 256GB is good for school. 512GB+ if you install large software or games."
+        help="Storage determines how many files/programs you can keep."
     )
 
     min_display = st.slider("Minimum Screen Size (inches)", 10.0, 18.0, 13.0)
@@ -82,8 +103,7 @@ else:
     if selected_cpu == "Any":
         selected_cpu = None
 
-# ---------------- FILTER ----------------
-
+# ---------------- FILTER FUNCTION ----------------
 def filter_laptops():
     filtered = data.copy()
 
@@ -102,17 +122,17 @@ filtered_laptops = filter_laptops()
 
 st.divider()
 
+# ---------------- RESULTS ----------------
 if filtered_laptops.empty:
     st.warning("No laptops match your criteria. Try adjusting your budget or requirements.")
 else:
 
-    # Prepare display dataframe
     display_df = filtered_laptops[['name', 'price_usd', 'raw_ram',
                                     'raw_storage', 'raw_display', 'rating']].copy()
 
     display_df['price_usd'] = display_df['price_usd'].round(2)
 
-    # -------- PRICE CATEGORY --------
+    # -------- CATEGORY --------
     def categorize(price):
         if price < 800:
             return "Budget"
@@ -123,7 +143,7 @@ else:
 
     display_df["Category"] = display_df["price_usd"].apply(categorize)
 
-    # -------- SCORING FOR RANKING --------
+    # -------- SCORING --------
     display_df["Score"] = (
         display_df["rating"] * 2 +
         display_df["raw_ram"] / 8 +
@@ -132,49 +152,48 @@ else:
 
     display_df = display_df.sort_values(by="Score", ascending=False)
 
-    # -------- TOP 3 ONLY --------
     top3 = display_df.head(3).reset_index(drop=True)
 
     st.subheader("Top 3 Recommended Laptops")
 
     for i in range(len(top3)):
         laptop = top3.iloc[i]
-    
-        badge = "Best Overall Pick ⭐" if i == 0 else ""
-    
-        # Color-coded category
-        if laptop["Category"] == "Budget":
-            st.markdown(f"<div style='color:green'><strong>{laptop['name']}</strong> ({laptop['Category']})</div>", unsafe_allow_html=True)
-        elif laptop["Category"] == "Balanced":
-            st.markdown(f"<div style='color:orange'><strong>{laptop['name']}</strong> ({laptop['Category']})</div>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<div style='color:red'><strong>{laptop['name']}</strong> ({laptop['Category']})</div>", unsafe_allow_html=True)
-    
-        if badge:
-            st.markdown(f"**{badge}**")
-    
-        st.write(f"Price: ${laptop['price_usd']}")
-        
-        # -------- VISUAL PROGRESS BARS --------
-    
-        # RAM bar (normalize to 32GB max for visualization)
-        st.write("RAM")
-        st.progress(min(laptop["raw_ram"] / 32, 1.0))
-    
-        # Storage bar (normalize to 1024GB)
-        st.write("Storage")
-        st.progress(min(laptop["raw_storage"] / 1024, 1.0))
-    
-        # Rating bar (5 max)
-        st.write("User Rating")
-        st.progress(laptop["rating"] / 5)
-    
-        # Price vs Budget bar (shows how close it is to budget)
-        st.write("Budget Usage")
-        st.progress(min(laptop["price_usd"] / max_price_usd, 1.0))
-    
-        st.divider()
 
+        if i == 0:
+            st.success("Best Overall Pick")
+
+        # Color-coded title
+        if laptop["Category"] == "Budget":
+            st.markdown(f"<div style='color:green'><strong>{laptop['name']}</strong> (Budget)</div>", unsafe_allow_html=True)
+        elif laptop["Category"] == "Balanced":
+            st.markdown(f"<div style='color:orange'><strong>{laptop['name']}</strong> (Balanced)</div>", unsafe_allow_html=True)
+        else:
+            st.markdown(f"<div style='color:red'><strong>{laptop['name']}</strong> (Premium)</div>", unsafe_allow_html=True)
+
+        st.write(f"Price: ${laptop['price_usd']}")
+
+        # -------- RAM --------
+        st.write("RAM (GB)", help="RAM affects multitasking. 8GB is standard. 16GB+ is better for coding or gaming.")
+        st.progress(min(laptop["raw_ram"] / 32, 1.0))
+        st.caption(f"{laptop['raw_ram']} GB")
+
+        # -------- STORAGE --------
+        st.write("Storage (GB)", help="Storage determines how many files/programs you can keep.")
+        st.progress(min(laptop["raw_storage"] / 1024, 1.0))
+        st.caption(f"{laptop['raw_storage']} GB")
+
+        # -------- RATING --------
+        st.write("User Rating", help="Average customer rating out of 5 stars.")
+        st.progress(laptop["rating"] / 5)
+        st.caption(f"{laptop['rating']} / 5")
+
+        # -------- BUDGET USAGE --------
+        st.write("Budget Usage", help="Shows how much of your selected budget this laptop uses.")
+        budget_ratio = laptop["price_usd"] / max_price_usd if max_price_usd > 0 else 1
+        st.progress(min(budget_ratio, 1.0))
+        st.caption(f"${laptop['price_usd']} of ${max_price_usd}")
+
+        st.divider()
 
     # -------- COMPARISON TABLE --------
     st.subheader("Compare Top 3")
@@ -192,4 +211,4 @@ else:
         "Category"
     ]
 
-    st.dataframe(comparison_table)
+    st.dataframe(comparison_table, use_container_width=True)
