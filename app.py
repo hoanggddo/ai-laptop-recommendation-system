@@ -177,6 +177,7 @@ All prices are displayed in USD.
 
 mode = st.radio("Choose mode:", ["Beginner","Advanced"])
 
+# --- Beginner ---
 if mode=="Beginner":
     st.subheader("I don’t know much about computers")
     usage = st.multiselect("What will you mainly use your laptop for?", ["Web browsing / Office", "Gaming", "Video Editing", "Programming"])
@@ -198,20 +199,25 @@ if mode=="Beginner":
         elif "storage" in col.lower(): custom_features.append(storage)
         elif "display" in col.lower(): custom_features.append(display_val)
         else: custom_features.append(data[col].mean())
-    
-    if st.button("Recommend Laptops"):
-    recs = recommend_laptops(custom_features=custom_features, top_n=10)
-    recs['score'] = recs.apply(lambda x: compute_score(x, 
-        {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
-    recs = recs.sort_values(by='score', ascending=False)
-    
-    # --- Show Top 5 Summary Table ---
-    display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
-    
-    # --- Show full detailed specs below ---
-    st.subheader("Detailed Laptop Specs")
-    display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
 
+    # --- Correctly indented button block ---
+    if st.button("Recommend Laptops"):
+        recs = recommend_laptops(custom_features=custom_features, top_n=10)
+        recs['score'] = recs.apply(
+            lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd),
+            axis=1
+        )
+        recs = recs.sort_values(by='score', ascending=False)
+
+        # --- Show Top 5 Summary Table ---
+        display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
+
+        # --- Show full detailed specs below ---
+        st.subheader("Detailed Laptop Specs")
+        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+
+
+# --- Advanced ---
 elif mode=="Advanced":
     st.subheader("I know what I want")
     ram = st.slider("RAM (GB)",4,64,16)
@@ -226,18 +232,19 @@ elif mode=="Advanced":
         elif "display" in col.lower(): custom_features.append(display_val)
         elif "price" in col.lower(): custom_features.append(budget_usd)
         else: custom_features.append(data[col].mean())
-    
+
+    # --- Correctly indented button block ---
     if st.button("Recommend Laptops"):
-    recs = recommend_laptops(custom_features=custom_features, top_n=10)
-    recs['score'] = recs.apply(lambda x: compute_score(x, 
-        {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
-    recs = recs.sort_values(by='score', ascending=False)
-    
-    # --- Show Top 5 Summary Table ---
-    display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
-    
-    # --- Show full detailed specs below ---
-    st.subheader("Detailed Laptop Specs")
-    display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+        recs = recommend_laptops(custom_features=custom_features, top_n=10)
+        recs['score'] = recs.apply(
+            lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd),
+            axis=1
+        )
+        recs = recs.sort_values(by='score', ascending=False)
 
+        # --- Show Top 5 Summary Table ---
+        display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
 
+        # --- Show full detailed specs below ---
+        st.subheader("Detailed Laptop Specs")
+        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
