@@ -91,9 +91,11 @@ def recommend_laptops(target_name, top_n=5):
     features_values = target_row[feature_cols].astype(float).values
     target_feature = torch.tensor(features_values, dtype=torch.float)
     
-    all_features = torch.tensor(data[feature_cols].values.astype(float), dtype=torch.float)
+    # --- FIXED: ensure features match number of item embeddings ---
+    all_features = torch.tensor(data[feature_cols].iloc[:num_items].values.astype(float), dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
     all_feature_embeds = model.fc_features(all_features)
+    
     target_embed = all_item_embeds[target_idx] + 0.5 * all_feature_embeds[target_idx]
 
     similarities = F.cosine_similarity(target_embed.unsqueeze(0), all_item_embeds + 0.5 * all_feature_embeds)
@@ -101,6 +103,7 @@ def recommend_laptops(target_name, top_n=5):
     top_candidates = [i for i in top_candidates if i != target_idx][:top_n]
 
     return data.iloc[top_candidates][['name','price(in Rs.)','ram','storage','display(in inch)','rating']]
+
 
 # --- 6. Streamlit UI ---
 st.title("💻 Hybrid Laptop Recommender")
@@ -115,3 +118,4 @@ if st.button("Recommend"):
         st.warning("No recommendations found.")
     else:
         st.dataframe(recommendations.reset_index(drop=True))
+
