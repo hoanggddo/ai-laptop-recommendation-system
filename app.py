@@ -53,10 +53,16 @@ data = load_and_process_data()
 with open("model_info.pkl","rb") as f:
     info = pickle.load(f)
 
-feature_cols = info["feature_cols"]
+# Only keep the features that actually exist in your dataset
+feature_cols = [col for col in info["feature_cols"] if col in data.columns or col in ['price_norm','ram_norm','storage_norm','display_norm']]
+
 num_users = info["num_users"]
 num_items = info["num_items"]
 embedding_dim = info["embedding_dim"]
+
+# When building feature tensor, use normalized/numeric columns
+feature_tensor = torch.tensor(data[['price_norm','ram_norm','storage_norm','display_norm']].values, dtype=torch.float)
+
 
 class HybridLaptopRecommender(nn.Module):
     def __init__(self, num_users, num_items, num_features, embedding_dim=30):
@@ -82,7 +88,7 @@ def recommend_laptops(target_name, top_n=5, price_thresh=0.2, ram_thresh=0.2, st
     if target_name not in data['name'].values:
         return pd.DataFrame()
 
-    feature_tensor = torch.tensor(data[feature_cols].values, dtype=torch.float)
+    feature_tensor = torch.tensor(data[['price_norm','ram_norm','storage_norm','display_norm']].values, dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
     all_feature_embeds = model.fc_features(feature_tensor)
 
@@ -197,3 +203,4 @@ else:
     comp_table = top3[['name','price_usd','raw_ram','raw_storage','raw_display','rating','Category']]
     comp_table.columns = ["Model","Price (USD)","RAM (GB)","Storage (GB)","Screen Size","Rating","Category"]
     st.dataframe(comp_table)
+
