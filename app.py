@@ -1,4 +1,3 @@
-# streamlit_app_with_score.py
 import streamlit as st
 import torch
 import torch.nn as nn
@@ -10,7 +9,7 @@ import re
 from sklearn.preprocessing import LabelEncoder
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="💻 Laptop Recommender", layout="wide")
+st.set_page_config(page_title="💻 AI Laptop Recommender", layout="wide")
 
 INR_TO_USD = 0.012
 
@@ -96,12 +95,14 @@ def get_bar_color(value, desired):
     else:
         return "red"
 
-# --- Overall Score ---
+# --- Overall Score (Fixed KeyError) ---
 def compute_score(row, desired_specs, budget_usd):
+    spec_cols_map = {"ram":"ram","storage":"storage","display":"display(in inch)"}
     spec_score = 0
-    for k in ['ram', 'storage', 'display(in inch)']:
-        spec_score += min(row[k]/max(desired_specs[k],1),1)
-    spec_score /= 3
+    for k, col_name in spec_cols_map.items():
+        if k in desired_specs:
+            spec_score += min(row[col_name]/max(desired_specs[k],1),1)
+    spec_score /= len(desired_specs)
     rating_score = row['rating']/5
     budget_score = 1 - abs(row['price_usd'] - budget_usd)/max(budget_usd,1)
     total_score = 0.5*spec_score + 0.3*rating_score + 0.2*budget_score
@@ -116,11 +117,9 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
         st.write(f"💰 Price: ${row['price_usd']:.2f}")
         st.write(f"⭐ Rating: {row['rating']}/5")
 
-        # Overall Score
         score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
         st.progress(score)
 
-        # Spec chart
         ram_color = get_bar_color(row['ram'], desired_specs['ram']) if desired_specs else "green"
         storage_color = get_bar_color(row['storage'], desired_specs['storage']) if desired_specs else "green"
         display_color = get_bar_color(row['display(in inch)'], desired_specs['display']) if desired_specs else "green"
@@ -137,7 +136,17 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
         st.plotly_chart(fig, use_container_width=True)
         st.write("---")
 
-# --- UI ---
+# --- Title Screen ---
+st.title("💻 AI Laptop Recommender")
+st.markdown("""
+Welcome! This app helps you find laptops suited for your needs.
+
+**Beginner:** You tell us what you plan to do with your laptop, and we suggest laptops with appropriate specs.  
+**Advanced:** You set your desired specs and budget to find the perfect laptop for you.
+
+All prices are displayed in USD.
+""")
+
 mode = st.radio("Choose mode:", ["Beginner","Advanced"])
 
 if mode=="Beginner":
