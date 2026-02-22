@@ -9,7 +9,7 @@ import re
 from sklearn.preprocessing import LabelEncoder
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="💻 AI Laptop Recommender", layout="wide")
+st.set_page_config(page_title="AI Laptop Recommender", layout="wide")
 
 INR_TO_USD = 0.012
 
@@ -146,9 +146,26 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
         st.plotly_chart(fig, use_container_width=True, key=f"spec_chart_{row.name}")
 
         st.write("---")
-
+        
+# --- Display Top 5 Summary ---
+def display_top_summary(laptops, desired_specs=None, budget_usd=None, top_n=5):
+    summary_rows = []
+    for i, row in laptops.iterrows():
+        score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
+        summary_rows.append({
+            "Laptop": row['name'],
+            "Price ($USD)": f"${row['price_usd']:.2f}",
+            "Rating": row['rating'],
+            "Score": f"{score:.2f}"
+        })
+    summary_df = pd.DataFrame(summary_rows)
+    summary_df = summary_df.sort_values(by="Score", ascending=False).head(top_n)
+    
+    st.subheader(f"Top {top_n} Recommended Laptops")
+    st.table(summary_df)
+    
 # --- Title Screen ---
-st.title("💻 AI Laptop Recommender")
+st.title("AI Laptop Recommender")
 st.markdown("""
 Welcome! This app helps you find laptops suited for your needs.
 
@@ -183,11 +200,17 @@ if mode=="Beginner":
         else: custom_features.append(data[col].mean())
     
     if st.button("Recommend Laptops"):
-        recs = recommend_laptops(custom_features=custom_features, top_n=5)
-        recs['score'] = recs.apply(lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
-        recs = recs.sort_values(by='score', ascending=False)
-        st.subheader("Top Laptop Recommendations")
-        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+    recs = recommend_laptops(custom_features=custom_features, top_n=10)
+    recs['score'] = recs.apply(lambda x: compute_score(x, 
+        {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
+    recs = recs.sort_values(by='score', ascending=False)
+    
+    # --- Show Top 5 Summary Table ---
+    display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
+    
+    # --- Show full detailed specs below ---
+    st.subheader("Detailed Laptop Specs")
+    display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
 
 elif mode=="Advanced":
     st.subheader("I know what I want")
@@ -205,9 +228,16 @@ elif mode=="Advanced":
         else: custom_features.append(data[col].mean())
     
     if st.button("Recommend Laptops"):
-        recs = recommend_laptops(custom_features=custom_features, top_n=5)
-        recs['score'] = recs.apply(lambda x: compute_score(x, {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
-        recs = recs.sort_values(by='score', ascending=False)
-        st.subheader("Top Laptop Recommendations")
-        display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+    recs = recommend_laptops(custom_features=custom_features, top_n=10)
+    recs['score'] = recs.apply(lambda x: compute_score(x, 
+        {'ram':ram,'storage':storage,'display':display_val}, budget_usd), axis=1)
+    recs = recs.sort_values(by='score', ascending=False)
+    
+    # --- Show Top 5 Summary Table ---
+    display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
+    
+    # --- Show full detailed specs below ---
+    st.subheader("Detailed Laptop Specs")
+    display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+
 
