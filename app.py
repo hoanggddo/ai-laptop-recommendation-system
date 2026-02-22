@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 import pickle
 import re
+from sklearn.preprocessing import LabelEncoder
 
 st.set_page_config(page_title="💻 Hybrid Laptop Recommender", layout="wide")
 
@@ -28,9 +29,18 @@ def load_data(csv_path="laptops.csv"):
     data['storage'] = data['storage'].apply(extract_numeric)
     data['display(in inch)'] = pd.to_numeric(data['display(in inch)'], errors='coerce')
     
-    return data
+    # Encode categorical columns automatically
+    categorical_cols = ['processor', 'os']
+    encoders = {}
+    for col in categorical_cols:
+        if col in data.columns:
+            le = LabelEncoder()
+            data[col] = le.fit_transform(data[col].astype(str))
+            encoders[col] = le
+    
+    return data, encoders
 
-data = load_data()
+data, encoders = load_data()
 
 # --- 2. Load model info ---
 with open("model_info.pkl", "rb") as f:
@@ -77,7 +87,7 @@ def recommend_laptops(target_name, top_n=5):
     target_row = data[data['name'] == target_name].iloc[0]
     target_idx = target_row.name
 
-    # Ensure features exist
+    # Extract numeric features safely
     features_values = target_row[feature_cols].astype(float).values
     target_feature = torch.tensor(features_values, dtype=torch.float)
     
