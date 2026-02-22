@@ -118,22 +118,33 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
         st.write(f"⭐ Rating: {row['rating']}/5")
 
         score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
-        st.progress(score)
+        st.progress(score, text=f"Score: {score:.2f}")
 
+        # --- Bar colors ---
         ram_color = get_bar_color(row['ram'], desired_specs['ram']) if desired_specs else "green"
         storage_color = get_bar_color(row['storage'], desired_specs['storage']) if desired_specs else "green"
         display_color = get_bar_color(row['display(in inch)'], desired_specs['display']) if desired_specs else "green"
 
         fig = go.Figure()
         specs = ['RAM (GB)','Storage (GB)','Display (inch)']
-        values = [row['ram'],row['storage'],row['display(in inch)']]
-        colors = [ram_color,storage_color,display_color]
-        desired_values = [desired_specs['ram'],desired_specs['storage'],desired_specs['display']] if desired_specs else values
+        values = [row['ram'], row['storage'], row['display(in inch)']]
+        colors = [ram_color, storage_color, display_color]
+        desired_values = [desired_specs['ram'], desired_specs['storage'], desired_specs['display']] if desired_specs else values
 
-        fig.add_trace(go.Bar(x=specs, y=values, marker_color=colors, text=values, textposition='auto', name='Laptop Specs'))
-        fig.add_trace(go.Scatter(x=specs, y=desired_values, mode='lines+markers', line=dict(color='blue',width=2,dash='dash'), name='Desired Specs'))
+        fig.add_trace(go.Bar(
+            x=specs, y=values, 
+            marker_color=colors, text=values, textposition='auto', name='Laptop Specs'
+        ))
+        fig.add_trace(go.Scatter(
+            x=specs, y=desired_values, 
+            mode='lines+markers', line=dict(color='blue', width=2, dash='dash'), 
+            name='Desired Specs'
+        ))
         fig.update_layout(yaxis=dict(title='Value'), showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
+        
+        # <-- IMPORTANT: add a unique key per laptop -->
+        st.plotly_chart(fig, use_container_width=True, key=f"spec_chart_{row.name}")
+
         st.write("---")
 
 # --- Title Screen ---
@@ -199,3 +210,4 @@ elif mode=="Advanced":
         recs = recs.sort_values(by='score', ascending=False)
         st.subheader("Top Laptop Recommendations")
         display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
+
