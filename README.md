@@ -92,6 +92,7 @@ data[['price_norm','ram_norm','storage_norm','display_norm']] = scaler.fit_trans
 data['user_id'] = range(len(data))
 data['laptop_id'] = range(len(data))
 
+## Setup
 Step 1: Set Up Your Project Folder
 Create a folder for your project:
 
