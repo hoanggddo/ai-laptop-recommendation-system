@@ -35,13 +35,13 @@ def load_and_process_data():
     else:
         data['rating'] = data['rating'].astype(float)
 
-    # Normalize numeric features for the model
+    # Normalize numeric features for AI model
     scaler = MinMaxScaler()
     data[['price_norm','ram_norm','storage_norm','display_norm']] = scaler.fit_transform(
         data[['price(in Rs.)','raw_ram','raw_storage','raw_display']]
     )
 
-    # Assign IDs
+    # Assign IDs for embedding
     data['user_id'] = range(len(data))
     data['laptop_id'] = range(len(data))
 
@@ -49,20 +49,15 @@ def load_and_process_data():
 
 data = load_and_process_data()
 
-# --- Load AI model ---
+# --- Load model info and define model ---
 with open("model_info.pkl","rb") as f:
     info = pickle.load(f)
 
-# Only keep the features that actually exist in your dataset
-feature_cols = [col for col in info["feature_cols"] if col in data.columns or col in ['price_norm','ram_norm','storage_norm','display_norm']]
-
+feature_cols = info["feature_cols"]
+num_features = len(feature_cols)
 num_users = info["num_users"]
 num_items = info["num_items"]
 embedding_dim = info["embedding_dim"]
-
-# When building feature tensor, use normalized/numeric columns
-feature_tensor = torch.tensor(data[['price_norm','ram_norm','storage_norm','display_norm']].values, dtype=torch.float)
-
 
 class HybridLaptopRecommender(nn.Module):
     def __init__(self, num_users, num_items, num_features, embedding_dim=30):
@@ -79,25 +74,25 @@ class HybridLaptopRecommender(nn.Module):
         interaction = user_embeds * (item_embeds + feature_embeds)
         return self.fc(interaction).squeeze()
 
-model = HybridLaptopRecommender(num_users, num_items, len(feature_cols), embedding_dim)
+model = HybridLaptopRecommender(num_users, num_items, num_features, embedding_dim)
 model.load_state_dict(torch.load("hybrid_laptop_model.pth", map_location="cpu"))
 model.eval()
 
-# --- Hybrid Recommendation Function ---
+# --- Hybrid AI recommendation function ---
 def recommend_laptops(target_name, top_n=5, price_thresh=0.2, ram_thresh=0.2, storage_thresh=0.2, rating_weight=2.0):
     if target_name not in data['name'].values:
         return pd.DataFrame()
 
-    feature_tensor = torch.tensor(data[['price_norm','ram_norm','storage_norm','display_norm']].values, dtype=torch.float)
+    feature_tensor = torch.tensor(data[feature_cols].values, dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
     all_feature_embeds = model.fc_features(feature_tensor)
 
     target_idx = data[data['name']==target_name].index[0]
-    target_embed = all_item_embeds[target_idx] + 0.5*all_feature_embeds[target_idx]
+    target_embed = all_item_embeds[target_idx] + 0.5 * all_feature_embeds[target_idx]
 
     similarities = F.cosine_similarity(target_embed.unsqueeze(0), all_item_embeds + 0.5*all_feature_embeds)
-    top_candidates = torch.topk(similarities, top_n+5).indices.tolist()
-    top_candidates = [i for i in top_candidates if i!=target_idx]
+    top_candidates = torch.topk(similarities, top_n + 5).indices.tolist()
+    top_candidates = [i for i in top_candidates if i != target_idx]
 
     # Feature-aware re-ranking
     filtered = []
@@ -126,7 +121,6 @@ def recommend_laptops(target_name, top_n=5, price_thresh=0.2, ram_thresh=0.2, st
 st.title("College Laptop Finder with AI Recommendations")
 st.markdown("Hybrid AI + feature filtering for top laptops.")
 
-# User type
 user_type = st.radio("Who are you?", ["High School Senior","Beginner","Tech-savvy"])
 
 if user_type in ["High School Senior","Beginner"]:
@@ -135,18 +129,18 @@ if user_type in ["High School Senior","Beginner"]:
     st.header("Step 2: Budget")
     max_price_usd = st.slider("Budget (USD)",300,2500,1200)
     max_price_rs = usd_to_rs(max_price_usd)
+    min_display = 13.0
+    min_rating = 3
 
-    if usage_type=="General College Work": min_ram,min_storage=8,256
-    else: min_ram,min_storage=16,512
+    if usage_type == "General College Work": min_ram, min_storage = 8, 256
+    else: min_ram, min_storage = 16, 512
 
-    min_display=13.0
-    min_rating=3
-    selected_cpu=None
+    selected_cpu = None
     st.info(f"Recommended minimum specs:\n• RAM: {min_ram} GB\n• Storage: {min_storage} GB")
 
 else:
     st.header("Customize Specs")
-    cpu_options=["Any","Intel Core i3","Intel Core i5","Intel Core i7","AMD Ryzen 3","AMD Ryzen 5","AMD Ryzen 7"]
+    cpu_options = ["Any","Intel Core i3","Intel Core i5","Intel Core i7","AMD Ryzen 3","AMD Ryzen 5","AMD Ryzen 7"]
     selected_cpu = st.selectbox("CPU Preference", cpu_options)
     min_ram = st.slider("Minimum RAM (GB)",2,64,8)
     min_storage = st.slider("Minimum Storage (GB)",64,2048,256)
@@ -174,7 +168,7 @@ else:
     display_df = filtered_laptops[['name','price_usd','raw_ram','raw_storage','raw_display','rating']].copy()
     display_df['price_usd'] = display_df['price_usd'].round(2)
 
-    # --- AI Top Recommendations ---
+    # AI Top Recommendations
     top_pick = recommend_laptops(display_df.iloc[0]['name'], top_n=3)
     st.subheader("AI Top Recommendations")
     for i,laptop in top_pick.iterrows():
@@ -182,7 +176,7 @@ else:
 
     st.divider()
 
-    # --- Top 3 Pick with Badges & Progress Bars ---
+    # Top 3 Pick with Badges & Progress Bars
     display_df['Category'] = display_df['price_usd'].apply(lambda p:"Budget" if p<800 else "Balanced" if p<1500 else "Premium")
     display_df['Score'] = display_df['rating']*2 + display_df['raw_ram']/8 + display_df['raw_storage']/256
     top3 = display_df.sort_values('Score',ascending=False).head(3).reset_index(drop=True)
@@ -203,4 +197,3 @@ else:
     comp_table = top3[['name','price_usd','raw_ram','raw_storage','raw_display','rating','Category']]
     comp_table.columns = ["Model","Price (USD)","RAM (GB)","Storage (GB)","Screen Size","Rating","Category"]
     st.dataframe(comp_table)
-
