@@ -156,7 +156,7 @@ streamlit run app.py
 
 Open your browser at:
 
-http://localhost:8501/
+[http://localhost:8501/] or  (https://ailaptop.streamlit.app/)
 
 
 You should now see the AI-powered laptop finder interface and can start filtering and exploring recommendations.
