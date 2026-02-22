@@ -93,62 +93,70 @@ data['user_id'] = range(len(data))
 data['laptop_id'] = range(len(data))
 ```
 
-## Data Preprocessing
-Step 1: Project Folder
+### Step 1: Project Folder
 
-Create a folder for your project:
+1. Create a folder for your project:
 
+```bash
 mkdir laptop-recommender
 cd laptop-recommender
+```
+2. Place the following files inside the folder:
 
+app.py – Your Streamlit application
 
-Place the following files in the folder:
+laptops.csv – Dataset of laptops
 
-app.py (your Streamlit app)
+hybrid_laptop_model.pth – Saved AI model
 
-laptops.csv (dataset)
+model_info.pkl – Metadata for the model
 
-hybrid_laptop_model.pth (saved AI model)
+requirements.txt – List of Python dependencies
 
-model_info.pkl (metadata for the model)
+Step 2: Set Up Python Environment
 
-requirements.txt
-
-Step 2: Python Environment
-
-Make sure Python 3.8 or higher is installed. Then create a virtual environment:
+Ensure Python 3.8 or higher is installed. Then create and activate a virtual environment:
 
 Windows:
+```bash
 
 python -m venv venv
 venv\Scripts\activate
-
+```
 
 macOS/Linux:
-
+```bash
 python3 -m venv venv
 source venv/bin/activate
-
+```
 Step 3: Install Dependencies
 
-Create a requirements.txt file with the following:
+Create a requirements.txt file with the following content:
 
+```txt
 streamlit==1.31.0
 torch==2.1.0
 pandas==2.1.1
 numpy==1.26.2
 scikit-learn==1.3.0
-
+```
 
 Install dependencies:
 
+```bash
 pip install -r requirements.txt
-
+```
 Step 4: Run the Streamlit App
 
-Start the app:
+Start the application:
 
+```python
 streamlit run app.py
+```
+
+Open your browser at:
+
+http://localhost:8501/
 
 
-Open a browser to http://localhost:8501/ to use the laptop finder.
+You should now see the AI-powered laptop finder interface and can start filtering and exploring recommendations.
