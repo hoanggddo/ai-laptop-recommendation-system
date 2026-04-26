@@ -5,7 +5,7 @@ This is a **Streamlit-based AI laptop recommendation system** designed to help u
 The app is beginner-friendly while still allowing advanced users to customize CPU, RAM, storage, display size, and budget. Top laptops are ranked using a **combined score of specs and user ratings**.
 
 ---
-w
+
 ## Key Features
 
 - **Beginner Mode:**  
