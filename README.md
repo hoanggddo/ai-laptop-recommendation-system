@@ -64,34 +64,6 @@ The app automatically converts RAM, storage, and display to numeric values and n
 3. **Normalize numeric features:** Price, RAM, storage, and display are scaled between 0 and 1.  
 4. **Price conversion:** Optionally convert INR to USD for display.  
 
-Example:
-
-```python
-import re
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler
-
-data = pd.read_csv('laptops.csv', encoding='ISO-8859-1')
-data = data[['name', 'price(in Rs.)', 'ram', 'storage', 'display(in inch)', 'rating']]
-data.dropna(inplace=True)
-
-def extract_numeric(val):
-    nums = re.findall(r'\d+', str(val))
-    return int(nums[0]) if nums else 0
-
-data['raw_ram'] = data['ram'].apply(extract_numeric)
-data['raw_storage'] = data['storage'].apply(extract_numeric)
-data['raw_display'] = pd.to_numeric(data['display(in inch)'], errors='coerce')
-data['price_usd'] = data['price(in Rs.)'] / 83.0  # Example conversion rate INR->USD
-
-scaler = MinMaxScaler()
-data[['price_norm','ram_norm','storage_norm','display_norm']] = scaler.fit_transform(
-    data[['price(in Rs.)','raw_ram','raw_storage','raw_display']]
-)
-
-data['user_id'] = range(len(data))
-data['laptop_id'] = range(len(data))
-```
 
 ### Step 1: Project Folder
 
