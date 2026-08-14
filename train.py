@@ -1,6 +1,6 @@
 """Regenerate hybrid_laptop_model.pth and model_info.pkl from laptops.csv.
 
-This is not required to run the Streamlit app — the repo ships a
+This is not required to run the Streamlit app. The repo ships a
 pre-trained hybrid_laptop_model.pth for that. Run this script if you
 update laptops.csv and need to retrain, or if you want to reproduce the
 shipped model from scratch.
