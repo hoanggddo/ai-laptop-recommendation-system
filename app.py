@@ -47,8 +47,8 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
         st.markdown(f"### {row['name']}")
         if "img_link" in row:
             st.image(row["img_link"], width=250)
-        st.write(f"💰 Price: ${row['price_usd']:.2f}")
-        st.write(f"⭐ Rating: {row['rating']}/5")
+        st.write(f" Price: ${row['price_usd']:.2f}")
+        st.write(f" Rating: {row['rating']}/5")
 
         score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
         st.progress(score, text=f"Score: {score:.2f}")
