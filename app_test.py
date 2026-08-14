@@ -13,7 +13,7 @@ st.set_page_config(page_title="AI Laptop Recommender", layout="wide")
 
 INR_TO_USD = 0.012
 
-# --- Load Data ---
+# Load Data
 @st.cache_data
 def load_data(csv_path="laptops.csv"):
     data = pd.read_csv(csv_path, encoding="ISO-8859-1")
@@ -37,7 +37,7 @@ def load_data(csv_path="laptops.csv"):
 
 data, encoders = load_data()
 
-# --- Load model info ---
+# Load model info 
 with open("model_info.pkl", "rb") as f:
     model_info = pickle.load(f)
 
@@ -46,7 +46,7 @@ num_users = model_info["num_users"]
 num_items = model_info["num_items"]
 embedding_dim = model_info["embedding_dim"]
 
-# --- Model ---
+# Model 
 class HybridLaptopRecommender(nn.Module):
     def __init__(self, num_users, num_items, num_features, embedding_dim=30):
         super().__init__()
@@ -65,7 +65,7 @@ model = HybridLaptopRecommender(num_users, num_items, len(feature_cols), embeddi
 model.load_state_dict(torch.load("hybrid_laptop_model.pth", map_location="cpu"))
 model.eval()
 
-# --- Recommendation ---
+# Recommendation
 def recommend_laptops(target_name=None, top_n=5, custom_features=None):
     all_features = torch.tensor(data[feature_cols].iloc[:num_items].values.astype(float), dtype=torch.float)
     all_item_embeds = model.item_embedding.weight
@@ -85,7 +85,7 @@ def recommend_laptops(target_name=None, top_n=5, custom_features=None):
     top_candidates = torch.topk(similarities, top_n*3).indices.tolist()
     return data.iloc[top_candidates]
 
-# --- Spec bar colors ---
+# Spec bar colors
 def get_bar_color(value, desired):
     ratio = value / max(desired,1)
     if ratio >= 1.0:
@@ -95,7 +95,7 @@ def get_bar_color(value, desired):
     else:
         return "red"
 
-# --- Overall Score (Fixed KeyError) ---
+# Overall Score
 def compute_score(row, desired_specs, budget_usd):
     spec_cols_map = {"ram":"ram","storage":"storage","display":"display(in inch)"}
     spec_score = 0
@@ -108,14 +108,14 @@ def compute_score(row, desired_specs, budget_usd):
     total_score = 0.5*spec_score + 0.3*rating_score + 0.2*budget_score
     return total_score
 
-# --- Display ---
+# Display 
 def display_laptops(laptops, desired_specs=None, budget_usd=None):
     for i, row in laptops.iterrows():
         st.markdown(f"### {row['name']}")
         if 'img_link' in row:
             st.image(row['img_link'], width=250)
-        st.write(f"💰 Price: ${row['price_usd']:.2f}")
-        st.write(f"⭐ Rating: {row['rating']}/5")
+        st.write(f" Price: ${row['price_usd']:.2f}")
+        st.write(f" Rating: {row['rating']}/5")
 
         score = compute_score(row, desired_specs, budget_usd) if desired_specs and budget_usd else 0
         st.progress(score, text=f"Score: {score:.2f}")
@@ -147,7 +147,7 @@ def display_laptops(laptops, desired_specs=None, budget_usd=None):
 
         st.write("---")
         
-# --- Display Top 5 Summary ---
+# Display Top 5 Summary
 def display_top_summary(laptops, desired_specs=None, budget_usd=None, top_n=5):
     summary_rows = []
     for i, row in laptops.iterrows():
@@ -164,7 +164,7 @@ def display_top_summary(laptops, desired_specs=None, budget_usd=None, top_n=5):
     st.subheader(f"Top {top_n} Recommended Laptops")
     st.table(summary_df)
     
-# --- Title Screen ---
+# Title Screen 
 st.title("AI Laptop Recommender")
 st.markdown("""
 Welcome! This app helps you find laptops suited for your needs.
@@ -177,7 +177,7 @@ All prices are displayed in USD.
 
 mode = st.radio("Choose mode:", ["Beginner","Advanced"])
 
-# --- Beginner ---
+# Beginner 
 if mode=="Beginner":
     st.subheader("I don’t know much about computers")
     usage = st.multiselect("What will you mainly use your laptop for?", ["Web browsing / Office", "Gaming", "Video Editing", "Programming"])
@@ -200,7 +200,7 @@ if mode=="Beginner":
         elif "display" in col.lower(): custom_features.append(display_val)
         else: custom_features.append(data[col].mean())
 
-    # --- Correctly indented button block ---
+    # Correctly indented button block
     if st.button("Recommend Laptops"):
         recs = recommend_laptops(custom_features=custom_features, top_n=10)
         recs['score'] = recs.apply(
@@ -209,15 +209,15 @@ if mode=="Beginner":
         )
         recs = recs.sort_values(by='score', ascending=False)
 
-        # --- Show Top 5 Summary Table ---
+        # Show Top 5 Summary Table
         display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
 
-        # --- Show full detailed specs below ---
+        # Show full detailed specs below 
         st.subheader("Detailed Laptop Specs")
         display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
 
 
-# --- Advanced ---
+#  Advanced 
 elif mode=="Advanced":
     st.subheader("I know what I want")
     ram = st.slider("RAM (GB)",4,64,16)
@@ -233,7 +233,7 @@ elif mode=="Advanced":
         elif "price" in col.lower(): custom_features.append(budget_usd)
         else: custom_features.append(data[col].mean())
 
-    # --- Correctly indented button block ---
+ 
     if st.button("Recommend Laptops"):
         recs = recommend_laptops(custom_features=custom_features, top_n=10)
         recs['score'] = recs.apply(
@@ -242,9 +242,9 @@ elif mode=="Advanced":
         )
         recs = recs.sort_values(by='score', ascending=False)
 
-        # --- Show Top 5 Summary Table ---
+
         display_top_summary(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd, top_n=5)
 
-        # --- Show full detailed specs below ---
+
         st.subheader("Detailed Laptop Specs")
         display_laptops(recs, {'ram':ram,'storage':storage,'display':display_val}, budget_usd)
